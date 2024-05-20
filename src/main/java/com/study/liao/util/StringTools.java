@@ -22,6 +22,6 @@ public class StringTools {
         return false;
     }
     public static String encodeByMd5(String orignString){
-        return isEmpty(orignString)?null: DigestUtils.md2Hex(orignString);
+        return isEmpty(orignString)?null: DigestUtils.md5Hex(orignString);
     }
 }

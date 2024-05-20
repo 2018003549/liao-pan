@@ -57,6 +57,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         String userId = StringTools.getRandomNumber(Constants.LENGTH_10);
         userInfo = new UserInfoEntity();
         userInfo.setUserId(userId);
+        userInfo.setEmail(email);
         userInfo.setNickName(nickName);
         userInfo.setPassword(StringTools.encodeByMd5(password));
         userInfo.setStatus(UserStatusEnum.ENABLE.getStatus());
@@ -84,13 +85,14 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
     @Override
     public SessionWebUserDto login(String email, String password) {
         UserInfoEntity userInfoEntity=selectByEmail(email);
-        if(null==userInfoEntity||!userInfoEntity.getPassword().equals(StringTools.encodeByMd5(password))){
+        //1.登录校验【这一块password不用再转成密文，因为前端传输时就已经转化了】
+        if(null==userInfoEntity||!userInfoEntity.getPassword().equals(password)){
             throw new BusinessException("账号密码错误");
         }
         if(UserStatusEnum.DISABLE.getStatus().equals(userInfoEntity.getStatus())){
             throw new BusinessException("账号已禁用");
         }
-        //1.更新登录时间
+        //2.更新登录时间
         UserInfoEntity userInfo = new UserInfoEntity();
         userInfo.setLastLoginTime(new Date());
         userInfo.setUserId(userInfoEntity.getUserId());
@@ -98,13 +100,13 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         SessionWebUserDto sessionWebUserDto = new SessionWebUserDto();
         sessionWebUserDto.setNickName(userInfo.getNickName());
         sessionWebUserDto.setNickName(userInfo.getUserId());
-        //2.判断是否为管理员【可能有多个管理员】
+        //3.判断是否为管理员【可能有多个管理员】
         if(ArrayUtils.contains(appConfig.getAdminUserName().split(","),email)){
             sessionWebUserDto.setIsAdmin(true);
         }else {
             sessionWebUserDto.setIsAdmin(false);
         }
-        //3.更新用户空间信息
+        //4.更新用户空间信息
         UserSpaceDto userSpaceDto = new UserSpaceDto();
         //TODO 实时查询文件占用情况userSpaceDto.setUserSpace();
         userSpaceDto.setTotalSpace(userInfoEntity.getTotalSpace());

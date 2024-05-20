@@ -89,8 +89,8 @@ public class UserInfoController {
                                @VerifyParam(required = true) String checkCode,
                                @VerifyParam(required = true) String emailCode){
         try {
-            if(!checkCode.equals(session.getAttribute(Constants.CHECK_CODE_KEY))){
-                throw new BusinessException("邮箱验证码不正确");
+            if(!checkCode.equalsIgnoreCase((String) session.getAttribute(Constants.CHECK_CODE_KEY))){
+                throw new BusinessException("图像验证码不正确");
             }
             userInfoService.register(email,nickName,password,emailCode);
             return getSuccessResponseVO(null);
@@ -105,8 +105,8 @@ public class UserInfoController {
                                @VerifyParam(required = true)String password,
                                @VerifyParam(required = true) String checkCode){
         try {
-            if(!checkCode.equals(session.getAttribute(Constants.CHECK_CODE_KEY))){
-                throw new BusinessException("邮箱验证码不正确");
+            if(!checkCode.equalsIgnoreCase((String) session.getAttribute(Constants.CHECK_CODE_KEY))){
+                throw new BusinessException("图像验证码不正确");
             }
             SessionWebUserDto sessionWebUserDto = userInfoService.login(email, password);
             session.setAttribute(Constants.SESSION_KEY,sessionWebUserDto);
