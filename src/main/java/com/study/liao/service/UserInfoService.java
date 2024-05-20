@@ -3,6 +3,7 @@ package com.study.liao.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.liao.common.utils.PageUtils;
 import com.study.liao.entity.UserInfoEntity;
+import com.study.liao.entity.dto.SessionWebUserDto;
 
 import java.util.Map;
 
@@ -15,6 +16,11 @@ import java.util.Map;
  */
 public interface UserInfoService extends IService<UserInfoEntity> {
 
+    void  register(String email, String nickName, String password, String emailCode);
+
     PageUtils queryPage(Map<String, Object> params);
+
+    UserInfoEntity selectByEmail(String email);
+    SessionWebUserDto login(String email,String password);
 }
 

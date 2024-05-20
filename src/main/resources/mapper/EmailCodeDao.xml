@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.study.liao.dao.EmailCodeDao">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.study.liao.entity.EmailCodeEntity" id="emailCodeMap">
+        <result property="email" column="email"/>
+        <result property="code" column="code"/>
+        <result property="createTime" column="create_time"/>
+        <result property="status" column="status"/>
+    </resultMap>
+<!--    将当前邮箱所有未使用的验证码变为已使用-->
+    <update id="disableEmailCode">
+        update email_code
+        set status=1
+        where email = #{email} and status = 0
+    </update>
+
+
+</mapper>

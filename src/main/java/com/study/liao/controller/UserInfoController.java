@@ -1,84 +1,100 @@
 package com.study.liao.controller;
 
-import java.util.Arrays;
-import java.util.Map;
+import java.io.IOException;
 
+import com.study.liao.annotation.GlobalInterceptor;
+import com.study.liao.annotation.VerifyParam;
+import com.study.liao.entity.constants.BusinessException;
+import com.study.liao.entity.constants.Constants;
+import com.study.liao.entity.enums.ResponseCodeEnum;
+import com.study.liao.entity.enums.VerifyRegexEnum;
+import com.study.liao.entity.vo.ResponseVO;
+import com.study.liao.util.CreateImageCode;
+import com.study.liao.service.EmailCodeService;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.study.liao.entity.UserInfoEntity;
 import com.study.liao.service.UserInfoService;
-import com.liao.common.utils.PageUtils;
-import com.liao.common.utils.R;
+
 
 
 
 /**
- * 
+ *
  *
  * @author liao
  * @email sunlightcs@gmail.com
  * @date 2024-05-03 18:10:47
  */
 @RestController
-@RequestMapping("liao/userinfo")
 public class UserInfoController {
     @Autowired
     private UserInfoService userInfoService;
-
-    /**
-     * 列表
-     */
-    @RequestMapping("/list")
-    public R list(@RequestParam Map<String, Object> params){
-        PageUtils page = userInfoService.queryPage(params);
-
-        return R.ok().put("page", page);
+    @Autowired
+    private EmailCodeService emailCodeService;
+    protected <T> ResponseVO getSuccessResponseVO(T t) {
+        ResponseVO<T> responseVO = new ResponseVO<>();
+        responseVO.setStatus("200");
+        responseVO.setCode(ResponseCodeEnum.CODE_200.getCode());
+        responseVO.setInfo(ResponseCodeEnum.CODE_200.getMsg());
+        responseVO.setData(t);
+        return responseVO;
     }
-
-
     /**
-     * 信息
+     * 生成图像验证码
+     * @param response
+     * @param session
+     * @param type
+     * @throws IOException
      */
-    @RequestMapping("/info/{userId}")
-    public R info(@PathVariable("userId") String userId){
-		UserInfoEntity userInfo = userInfoService.getById(userId);
-
-        return R.ok().put("userInfo", userInfo);
+    @RequestMapping(value = "/checkCode")
+    public void checkCode(HttpServletResponse response, HttpSession session, Integer type) throws
+            IOException {
+        CreateImageCode vCode = new CreateImageCode(130, 38, 5, 10);
+        response.setHeader("Pragma", "no-cache");
+        response.setHeader("Cache-Control", "no-cache");
+        response.setDateHeader("Expires", 0);
+        response.setContentType("image/jpeg");
+        String code = vCode.getCode();
+        if (type == null || type == 0) {
+            session.setAttribute(Constants.CHECK_CODE_KEY, code);
+        } else {
+            session.setAttribute(Constants.CHECK_CODE_KEY_EMAIL, code);
+        }
+        vCode.write(response.getOutputStream());
     }
-
-    /**
-     * 保存
-     */
-    @RequestMapping("/save")
-    public R save(@RequestBody UserInfoEntity userInfo){
-		userInfoService.save(userInfo);
-
-        return R.ok();
+    @GlobalInterceptor(checkParams = true)
+    @RequestMapping("/sendEmailCode")
+    public ResponseVO sendEmailCode(HttpSession session, @VerifyParam(required = true) String email, String checkCode, Integer type){
+        try {
+            if(!checkCode.equals(session.getAttribute(Constants.CHECK_CODE_KEY_EMAIL))){
+                throw new BusinessException("图像验证码不正确");
+            }
+            emailCodeService.sendEmailCode(email,type);
+            return getSuccessResponseVO(null);
+        } finally {
+            session.removeAttribute(Constants.CHECK_CODE_KEY_EMAIL);
+        }
     }
-
-    /**
-     * 修改
-     */
-    @RequestMapping("/update")
-    public R update(@RequestBody UserInfoEntity userInfo){
-		userInfoService.updateById(userInfo);
-
-        return R.ok();
+    @GlobalInterceptor(checkParams = true)
+    @RequestMapping("/register")
+    public ResponseVO register(HttpSession session,
+                               @VerifyParam(required = true,regex = VerifyRegexEnum.EMAIL,max=150) String email,
+                               @VerifyParam(required = true)String nickName,
+                               @VerifyParam(required = true,regex = VerifyRegexEnum.PASSWORD,min=8,max=18)String password,
+                               @VerifyParam(required = true) String checkCode,
+                               @VerifyParam(required = true) String emailCode){
+        try {
+            if(!checkCode.equals(session.getAttribute(Constants.CHECK_CODE_KEY))){
+                throw new BusinessException("邮箱验证码不正确");
+            }
+            userInfoService.register(email,nickName,password,emailCode);
+            return getSuccessResponseVO(null);
+        } finally {
+            session.removeAttribute(Constants.CHECK_CODE_KEY);
+        }
     }
-
-    /**
-     * 删除
-     */
-    @RequestMapping("/delete")
-    public R delete(@RequestBody String[] userIds){
-		userInfoService.removeByIds(Arrays.asList(userIds));
-
-        return R.ok();
-    }
-
 }
