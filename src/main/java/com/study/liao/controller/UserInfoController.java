@@ -6,6 +6,7 @@ import com.study.liao.annotation.GlobalInterceptor;
 import com.study.liao.annotation.VerifyParam;
 import com.study.liao.entity.constants.BusinessException;
 import com.study.liao.entity.constants.Constants;
+import com.study.liao.entity.dto.SessionWebUserDto;
 import com.study.liao.entity.enums.ResponseCodeEnum;
 import com.study.liao.entity.enums.VerifyRegexEnum;
 import com.study.liao.entity.vo.ResponseVO;
@@ -93,6 +94,23 @@ public class UserInfoController {
             }
             userInfoService.register(email,nickName,password,emailCode);
             return getSuccessResponseVO(null);
+        } finally {
+            session.removeAttribute(Constants.CHECK_CODE_KEY);
+        }
+    }
+    @GlobalInterceptor(checkParams = true)
+    @RequestMapping("/login")
+    public ResponseVO login(HttpSession session,
+                               @VerifyParam(required = true) String email,
+                               @VerifyParam(required = true)String password,
+                               @VerifyParam(required = true) String checkCode){
+        try {
+            if(!checkCode.equals(session.getAttribute(Constants.CHECK_CODE_KEY))){
+                throw new BusinessException("邮箱验证码不正确");
+            }
+            SessionWebUserDto sessionWebUserDto = userInfoService.login(email, password);
+            session.setAttribute(Constants.SESSION_KEY,sessionWebUserDto);
+            return getSuccessResponseVO(sessionWebUserDto);
         } finally {
             session.removeAttribute(Constants.CHECK_CODE_KEY);
         }

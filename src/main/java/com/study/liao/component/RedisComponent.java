@@ -24,6 +24,6 @@ public class RedisComponent {
         return sysSettingsDto;
     }
     public void saveUserSpaceUse(String userId, UserSpaceDto userSpaceDto){
-        redisUtils.setex(Constants.REDIS_KEY_USER_SPACE_USE+userId,Constants.REDIS_KEY_EXPIRES_DAY);
+        redisUtils.setex(Constants.REDIS_KEY_USER_SPACE_USE+userId,userSpaceDto,Constants.REDIS_KEY_EXPIRES_DAY);
     }
 }

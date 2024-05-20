@@ -90,6 +90,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         if(UserStatusEnum.DISABLE.getStatus().equals(userInfoEntity.getStatus())){
             throw new BusinessException("账号已禁用");
         }
+        //1.更新登录时间
         UserInfoEntity userInfo = new UserInfoEntity();
         userInfo.setLastLoginTime(new Date());
         userInfo.setUserId(userInfoEntity.getUserId());
@@ -97,16 +98,18 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         SessionWebUserDto sessionWebUserDto = new SessionWebUserDto();
         sessionWebUserDto.setNickName(userInfo.getNickName());
         sessionWebUserDto.setNickName(userInfo.getUserId());
-        //判断是否为管理员【可能有多个管理员】
+        //2.判断是否为管理员【可能有多个管理员】
         if(ArrayUtils.contains(appConfig.getAdminUserName().split(","),email)){
             sessionWebUserDto.setIsAdmin(true);
         }else {
             sessionWebUserDto.setIsAdmin(false);
         }
-        //更新用户空间信息
+        //3.更新用户空间信息
         UserSpaceDto userSpaceDto = new UserSpaceDto();
         //TODO 实时查询文件占用情况userSpaceDto.setUserSpace();
         userSpaceDto.setTotalSpace(userInfoEntity.getTotalSpace());
+        //刷新缓存中的用户空间信息
+        redisComponent.saveUserSpaceUse(userInfo.getUserId(),userSpaceDto);
         return null;
     }
 
