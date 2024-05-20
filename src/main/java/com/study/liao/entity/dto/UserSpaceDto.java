@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class UserSpaceDto {
     private Long userSpace;
-    private Long totalSpace
+    private Long totalSpace;
 }
