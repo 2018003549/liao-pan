@@ -3,9 +3,13 @@ package com.study.liao.aspect;
 import com.study.liao.annotation.GlobalInterceptor;
 import com.study.liao.annotation.VerifyParam;
 import com.study.liao.entity.constants.BusinessException;
+import com.study.liao.entity.constants.Constants;
+import com.study.liao.entity.dto.SessionWebUserDto;
 import com.study.liao.entity.enums.ResponseCodeEnum;
 import com.study.liao.util.StringTools;
 import com.study.liao.util.VerifyUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
@@ -13,6 +17,8 @@ import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -41,9 +47,11 @@ public class GlobalOperationAspect {
             if (null == interceptor) {
                 return;
             }
-            /**
-             * 校验参数
-             */
+            //校验登录
+            if(interceptor.checkLogin()|| interceptor.checkAdmin()){
+                checkLogin(interceptor.checkAdmin());
+            }
+            // 校验参数
             if (interceptor.checkParams()) {
                 validateParams(method, arguments);
             }
@@ -56,6 +64,17 @@ public class GlobalOperationAspect {
         } catch (Throwable e) {
             log.error("全局拦截器异常", e);
             throw new BusinessException(ResponseCodeEnum.CODE_500);
+        }
+    }
+    private void checkLogin(Boolean checkAdmin){
+        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        HttpSession session = request.getSession();
+        SessionWebUserDto userDto= (SessionWebUserDto) session.getAttribute(Constants.SESSION_KEY);
+        if(null==userDto){
+            throw new BusinessException(ResponseCodeEnum.CODE_901);
+        }
+        if(checkAdmin&&!userDto.getIsAdmin()){
+            throw new BusinessException(ResponseCodeEnum.CODE_404);
         }
     }
 

@@ -22,5 +22,7 @@ public interface UserInfoService extends IService<UserInfoEntity> {
 
     UserInfoEntity selectByEmail(String email);
     SessionWebUserDto login(String email,String password);
+
+    void resetPwd(String email, String password, String emailCode);
 }
 

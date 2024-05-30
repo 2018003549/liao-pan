@@ -26,4 +26,16 @@ public class RedisComponent {
     public void saveUserSpaceUse(String userId, UserSpaceDto userSpaceDto){
         redisUtils.setex(Constants.REDIS_KEY_USER_SPACE_USE+userId,userSpaceDto,Constants.REDIS_KEY_EXPIRES_DAY);
     }
+    public UserSpaceDto getUseSpace(String userId){
+        UserSpaceDto spaceDto= (UserSpaceDto) redisUtils.get(Constants.REDIS_KEY_USER_SPACE_USE+userId);
+        if(spaceDto==null){
+            //如果没有用户空间使用情况，就得刷新缓存
+            spaceDto=new UserSpaceDto();
+            //todo 需要查询用户文件表，统计用户目前的存储空间使用情况
+            spaceDto.setTotalSpace(0l);
+            spaceDto.setTotalSpace(spaceDto.getTotalSpace()*Constants.MB);
+            saveUserSpaceUse(userId,spaceDto);
+        }
+        return spaceDto;
+    }
 }

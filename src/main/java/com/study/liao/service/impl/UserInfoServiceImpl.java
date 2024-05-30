@@ -112,7 +112,22 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         userSpaceDto.setTotalSpace(userInfoEntity.getTotalSpace());
         //刷新缓存中的用户空间信息
         redisComponent.saveUserSpaceUse(userInfo.getUserId(),userSpaceDto);
-        return null;
+        return sessionWebUserDto;
     }
 
+    @Override
+    @Transactional
+    public void resetPwd(String email, String password, String emailCode) {
+        UserInfoEntity userInfoEntity=selectByEmail(email);
+        //1.登录校验
+        if(null==userInfoEntity){
+            throw new BusinessException("邮箱账号不存在");
+        }
+        if(UserStatusEnum.DISABLE.getStatus().equals(userInfoEntity.getStatus())){
+            throw new BusinessException("账号已禁用");
+        }
+        emailCodeService.checkCode(email,emailCode);
+        userInfoEntity.setPassword(password);
+        baseMapper.updateById(userInfoEntity);
+    }
 }

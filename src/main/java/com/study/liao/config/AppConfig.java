@@ -10,4 +10,6 @@ public class AppConfig {
     private String sendUserName;
     @Value("${admin.emails:}")
     private String adminUserName;
+    @Value("${project.folder}")
+    private String projectFolder;
 }
