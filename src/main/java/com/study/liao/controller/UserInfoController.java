@@ -236,10 +236,4 @@ public class UserInfoController {
         session.setAttribute(Constants.SESSION_KEY, webUserDto);
         return getSuccessResponseVO(null);
     }
-    @RequestMapping("/getUserInfo")
-    @GlobalInterceptor
-    public ResponseVO getUserInfo(HttpSession session) {
-        SessionWebUserDto sessionWebUserDto= (SessionWebUserDto) session.getAttribute(Constants.SESSION_KEY);
-        return getSuccessResponseVO(sessionWebUserDto);
-    }
 }

@@ -81,4 +81,9 @@ public class FileInfoEntity implements Serializable {
 	 */
 	private Integer delFlag;
 
+	private Date lastUpdateTime;
+	/**
+	 * 更加详细的文件类型
+	 */
+	private Integer fileType;
 }

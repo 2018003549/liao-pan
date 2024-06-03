@@ -79,4 +79,5 @@ public class Constants {
 
     public static final String REDIS_KEY_USER_FILE_TEMP_SIZE = "easypan:user:file:temp:";
 
+    public static final Integer USER_DEFAULT_TOTALSZIE = 1000;
 }

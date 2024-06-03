@@ -2,6 +2,7 @@ package com.study.liao.service.impl;
 
 import com.study.liao.component.RedisComponent;
 import com.study.liao.config.AppConfig;
+import com.study.liao.dao.FileInfoMapper;
 import com.study.liao.entity.constants.BusinessException;
 import com.study.liao.entity.constants.Constants;
 import com.study.liao.entity.dto.SessionWebUserDto;
@@ -37,6 +38,8 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
     RedisComponent redisComponent;
     @Autowired
     AppConfig appConfig;
+    @Autowired
+    FileInfoMapper fileInfoMapper;
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void register(String email, String nickName, String password, String emailCode) {
@@ -93,13 +96,15 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
             throw new BusinessException("账号已禁用");
         }
         //2.更新登录时间
+        String userId = userInfoEntity.getUserId();
         UserInfoEntity userInfo = new UserInfoEntity();
         userInfo.setLastLoginTime(new Date());
-        userInfo.setUserId(userInfoEntity.getUserId());
+        userInfo.setUserId(userId);
         updateById(userInfoEntity);
         SessionWebUserDto sessionWebUserDto = new SessionWebUserDto();
         sessionWebUserDto.setNickName(userInfo.getNickName());
         sessionWebUserDto.setNickName(userInfo.getUserId());
+        sessionWebUserDto.setUserId(userInfo.getUserId());
         //3.判断是否为管理员【可能有多个管理员】
         if(ArrayUtils.contains(appConfig.getAdminUserName().split(","),email)){
             sessionWebUserDto.setIsAdmin(true);
@@ -108,8 +113,11 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         }
         //4.更新用户空间信息
         UserSpaceDto userSpaceDto = new UserSpaceDto();
-        //TODO 实时查询文件占用情况userSpaceDto.setUserSpace();
-        userSpaceDto.setTotalSpace(userInfoEntity.getTotalSpace());
+        // 实时查询文件占用情况
+        Long useSpace = fileInfoMapper.selectUseSpace(userId);
+        userSpaceDto.setUseSpace(useSpace);
+        UserInfoEntity lastUserInfo = getById(userId);
+        userSpaceDto.setTotalSpace(lastUserInfo.getTotalSpace());
         //刷新缓存中的用户空间信息
         redisComponent.saveUserSpaceUse(userInfo.getUserId(),userSpaceDto);
         return sessionWebUserDto;
@@ -129,5 +137,10 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         emailCodeService.checkCode(email,emailCode);
         userInfoEntity.setPassword(password);
         baseMapper.updateById(userInfoEntity);
+    }
+
+    @Override
+    public Integer updateUseSpace(String userId, Long useSpace, Long totalSpace) {
+        return baseMapper.updateUseSpace(userId,useSpace,totalSpace);
     }
 }

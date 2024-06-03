@@ -17,6 +17,24 @@
         <result property="useSpace" column="use_space"/>
         <result property="totalSpace" column="total_space"/>
     </resultMap>
-
-
+    <update id="updateUseSpace">
+        update user_info
+        <set>
+            <if test="useSpace!=null">
+                use_space=use_space+#{useSpace},
+            </if>
+            <if test="totalSpace!=null">
+                total_space=total_space+#{totalSpace}
+            </if>
+        </set>
+        where user_id=#{userId}
+        <if test="useSpace!=null and totalSpace!=null  ">
+--         使用空间更新后不能超过总空间
+            and <![CDATA[(use_space+#{useSpace}) <= total_space]]>
+        </if>
+        <if test="useSpace!=null and totalSpace!=null">
+--         总空间更新后不能比使用空间还小
+            and <![CDATA[(total_space+#{totalSpace}) >= use_space]]>
+        </if>
+    </update>
 </mapper>

@@ -2,12 +2,14 @@ package com.study.liao.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.study.liao.entity.FileInfoEntity;
+import com.study.liao.entity.dto.SessionWebUserDto;
+import com.study.liao.entity.dto.UploadResultDto;
 import com.study.liao.entity.query.FileInfoQuery;
 import com.study.liao.entity.vo.PaginationResultVO;
 import org.apache.tomcat.jni.FileInfo;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 
@@ -21,7 +23,9 @@ public interface FileInfoService extends IService<FileInfoEntity> {
     /**
      * 根据条件查询列表
      */
-    List<FileInfo> findListByParam(FileInfoQuery param);
+    List<FileInfoEntity> findListByParam(FileInfoQuery param);
     PaginationResultVO<FileInfo> findListByPage(FileInfoQuery param);
+
+    UploadResultDto uploadFile(SessionWebUserDto webUserDto, String fileId, MultipartFile file, String fileName, String filePid, String fileMd5, Integer chunkIndex, Integer chunks);
 }
 
