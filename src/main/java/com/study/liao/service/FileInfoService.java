@@ -27,5 +27,12 @@ public interface FileInfoService extends IService<FileInfoEntity> {
     PaginationResultVO<FileInfo> findListByPage(FileInfoQuery param);
 
     UploadResultDto uploadFile(SessionWebUserDto webUserDto, String fileId, MultipartFile file, String fileName, String filePid, String fileMd5, Integer chunkIndex, Integer chunks);
+    FileInfoEntity getFileInfoByFileIdAndUserId(String fileId, String userId);
+
+    FileInfoEntity newFolder(String filePid, String fileName, String userId);
+
+    FileInfoEntity rename(String fileId, String userId, String fileName);
+
+    void changeFileFolder(String fileIds, String filePid, String userId);
 }
 

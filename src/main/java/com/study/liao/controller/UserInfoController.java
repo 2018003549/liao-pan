@@ -189,11 +189,12 @@ public class UserInfoController {
         try {
             writer = response.getWriter();
             writer.print("请在头像目录下放置默认头像default_avatar.jpg");
-            writer.close();
         } catch (Exception e) {
             log.error("输出无默认图失败", e);
         } finally {
-            writer.close();
+            if(writer!=null){
+                writer.close();
+            }
         }
     }
     @RequestMapping("getUseSpace")
