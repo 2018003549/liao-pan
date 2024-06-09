@@ -1,5 +1,6 @@
 package com.study.liao.controller;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,8 @@ import com.study.liao.entity.vo.PaginationResultVO;
 import com.study.liao.entity.vo.ResponseVO;
 import com.study.liao.util.CopyTools;
 import com.study.liao.util.StringTools;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,13 +61,13 @@ public class FileInfoController extends ABaseController {
     }
 
     /**
-     * @param fileId 分片对应的文件id，首个分片没有id，所以为非必填
-     * @param file 本次传输的分片
-     * @param fileName 文件原名
-     * @param filePid 文件所在目录
-     * @param fileMd5 文件的md5码，如果数据库中存在相同的md5码，就可以秒传
+     * @param fileId     分片对应的文件id，首个分片没有id，所以为非必填
+     * @param file       本次传输的分片
+     * @param fileName   文件原名
+     * @param filePid    文件所在目录
+     * @param fileMd5    文件的md5码，如果数据库中存在相同的md5码，就可以秒传
      * @param chunkIndex 分片索引
-     * @param chunks 分片数
+     * @param chunks     分片数
      */
     @RequestMapping("/uploadFile")
     @GlobalInterceptor(checkParams = true)
@@ -128,24 +131,24 @@ public class FileInfoController extends ABaseController {
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         String userId = webUserDto.getUserId();
         FileInfoEntity fileInfo = fileInfoService.rename(fileId, userId, fileName);
-        return getSuccessResponseVO(CopyTools.copy(fileInfo,FileInfoVO.class));
+        return getSuccessResponseVO(CopyTools.copy(fileInfo, FileInfoVO.class));
     }
 
     /**
      * @param session
-     * @param filePid 当前父目录【即移动到的位置】
+     * @param filePid        当前父目录【即移动到的位置】
      * @param currentFileIds 原文件所在目录【需要排除掉】
-     * @return
+     * @return 返回当前层级的所有目录
      */
     @RequestMapping("/loadAllFolder")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO loadAllFolder(HttpSession session, @VerifyParam(required = true) String filePid
-            ,  String currentFileIds) {
+            , String currentFileIds) {
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         String userId = webUserDto.getUserId();
         FileInfoQuery fileInfoQuery = new FileInfoQuery();
         //1.排除掉原文件所在目录
-        if(!StringTools.isEmpty(currentFileIds)){
+        if (!StringTools.isEmpty(currentFileIds)) {
             fileInfoQuery.setExcludeFileIdArray(currentFileIds.split(","));
         }
         //2.查询当前目录下的所有目录
@@ -155,7 +158,7 @@ public class FileInfoController extends ABaseController {
         fileInfoQuery.setDelFlag(FileDelFlagEnums.USING.getFlag());
         fileInfoQuery.setOrderBy("create_time desc");
         List<FileInfoEntity> fileInfoList = fileInfoService.findListByParam(fileInfoQuery);
-        return getSuccessResponseVO(CopyTools.copyList(fileInfoList,FileInfoVO.class));
+        return getSuccessResponseVO(CopyTools.copyList(fileInfoList, FileInfoVO.class));
     }
 
     /**
@@ -165,10 +168,46 @@ public class FileInfoController extends ABaseController {
     @RequestMapping("/changeFileFolder")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO changeFileFolder(HttpSession session, @VerifyParam(required = true) String fileIds
-            ,  String filePid){
+            , String filePid) {
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         String userId = webUserDto.getUserId();
-        fileInfoService.changeFileFolder(fileIds,filePid,userId);
+        fileInfoService.changeFileFolder(fileIds, filePid, userId);
+        return getSuccessResponseVO(null);
+    }
+
+    /**
+     * 创建下载链接，在这一步校验用户权限
+     * @param fileId 需要下载的文件id
+     * @return 临时下载码
+     */
+    @RequestMapping("createDownloadUrl/{fileId}")
+    @GlobalInterceptor(checkParams = true)
+    public ResponseVO createDownloadUrl(HttpSession session, @PathVariable(required = true) String fileId) {
+        SessionWebUserDto webUserDto = getUserInfoFromSession(session);
+        String userId = webUserDto.getUserId();
+        return super.createDownloadUrl(fileId, userId);
+    }
+
+    /**
+     * 根据临时下载码下载文件
+     * @param code 临时下载码
+     */
+    @RequestMapping("/download/{code}")
+    @GlobalInterceptor(checkParams = true, checkLogin = false)//不需要校验登录
+    public void download(HttpServletRequest request, HttpServletResponse response,
+                         @VerifyParam(required = true) @PathVariable("code") String code) throws UnsupportedEncodingException {
+        super.download(request, response, code);
+    }
+
+    /**
+     * 批量删除文件到回收站
+     * @param fileIds 所选的多个待删除文件id
+     */
+    @RequestMapping("delFile")
+    @GlobalInterceptor(checkParams = true)
+    public ResponseVO delFile(HttpSession session,@VerifyParam(required = true)String fileIds){
+        SessionWebUserDto webUserDto = getUserInfoFromSession(session);
+        fileInfoService.removeFile2RecycleBatch(webUserDto.getUserId(),fileIds);
         return getSuccessResponseVO(null);
     }
 }

@@ -34,5 +34,16 @@ public interface FileInfoService extends IService<FileInfoEntity> {
     FileInfoEntity rename(String fileId, String userId, String fileName);
 
     void changeFileFolder(String fileIds, String filePid, String userId);
+
+    /**
+     * removeFile to Recycle：删除文件，且把文件移动到回收站
+     * @param userId
+     * @param fileIds
+     */
+    void removeFile2RecycleBatch(String userId, String fileIds);
+
+    void recoverFile(String userId, String fileIds);
+
+    void delFileBatch(String userId, String fileIds, Boolean isAdmin);
 }
 

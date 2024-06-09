@@ -31,20 +31,32 @@ public interface FileInfoMapper<T, P> extends BaseMapper<T, P> {
     void updateFileStatusWithOldStatus(@Param("fileId") String fileId, @Param("userId") String userId, @Param("bean") T t,
                                        @Param("oldStatus") Integer oldStatus);
 
-    void updateFileDelFlagBatch(@Param("bean") FileInfoEntity fileInfo,
-                                @Param("userId") String userId,
-                                @Param("filePidList") List<String> filePidList,
-                                @Param("fileIdList") List<String> fileIdList,
-                                @Param("oldDelFlag") Integer oldDelFlag);
-
-
-    void delFileBatch(@Param("userId") String userId,
-                      @Param("filePidList") List<String> filePidList,
-                      @Param("fileIdList") List<String> fileIdList,
-                      @Param("oldDelFlag") Integer oldDelFlag);
 
     Long selectUseSpace(@Param("userId") String userId);
 
     void deleteFileByUserId(@Param("userId") String userId);
+
+    /**
+     * 根据筛选条件去批量修改指定目录的删除标识
+     *
+     * @param fileInfo    修改信息
+     * @param filePidList 根据父id，即按照目录来筛选，将指定目录下的所有文件修改状态
+     * @param fileIdList  根据文件id，修改指定文件id的文件状态，和filePidList参数只能有一个生效
+     * @param oldDelFlag  旧的删除标识，已经删除过的文件没必要删除
+     */
+    void updateFileDelFlagBatch(@Param("bean") FileInfoEntity fileInfo, @Param("userId") String userId,
+                                @Param("filePidList") List<String> filePidList, @Param("fileIdList") List<String> fileIdList,
+                                @Param("oldDelFlag") Integer oldDelFlag);
+
+    /**
+     * 根据删选条件批量从数据库删除文件记录
+     * @param filePidList 根据父id，即按照目录来筛选，将指定目录下的所有文件修改状态
+     * @param fileIdList  根据文件id，修改指定文件id的文件状态，和filePidList参数只能有一个生效
+     * @param oldDelFlag  旧的删除标识，已经删除过的文件没必要删除
+     */
+    void delFileBatch(@Param("userId") String userId,
+                      @Param("filePidList") List<String> filePidList,
+                      @Param("fileIdList") List<String> fileIdList,
+                      @Param("oldDelFlag") Integer oldDelFlag);
 
 }

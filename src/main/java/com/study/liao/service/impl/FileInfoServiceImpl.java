@@ -6,6 +6,7 @@ import com.study.liao.component.RedisComponent;
 import com.study.liao.config.AppConfig;
 import com.study.liao.dao.FileInfoMapper;
 import com.study.liao.entity.FileInfoEntity;
+import com.study.liao.entity.UserInfoEntity;
 import com.study.liao.entity.constants.BusinessException;
 import com.study.liao.entity.constants.Constants;
 import com.study.liao.entity.dto.SessionWebUserDto;
@@ -435,7 +436,7 @@ public class FileInfoServiceImpl implements FileInfoService {
     @Override
     public FileInfoEntity newFolder(String filePid, String fileName, String userId) {
         //1.校验文件夹名称【不能重名】
-        checkFileName(filePid, userId,fileName, FileFolderTypeEnums.FOLDER.getType());
+        checkFileName(filePid, userId, fileName, FileFolderTypeEnums.FOLDER.getType());
         //2.直接新增文件夹信息
         Date date = new Date();
         FileInfoEntity fileInfo = new FileInfoEntity();
@@ -455,21 +456,21 @@ public class FileInfoServiceImpl implements FileInfoService {
     @Override
     public FileInfoEntity rename(String fileId, String userId, String fileName) {
         FileInfoEntity fileInfo = fileInfoMapper.selectByFileIdAndUserId(fileId, userId);
-        if(null==fileInfo){
+        if (null == fileInfo) {
             throw new BusinessException("文件不存在");
         }
         //1.校验文件名
         String filePid = fileInfo.getFilePid();
-        checkFileName(filePid,userId,fileName,FileFolderTypeEnums.FOLDER.getType());
+        checkFileName(filePid, userId, fileName, FileFolderTypeEnums.FOLDER.getType());
         //2.如果修改的是文件类型，获取文件后缀,只改名不该后缀
-        if(FileFolderTypeEnums.FILE.getType().equals(fileInfo.getFolderType())){
-            fileName=fileName+StringTools.getFileSuffix(fileInfo.getFileName());
+        if (FileFolderTypeEnums.FILE.getType().equals(fileInfo.getFolderType())) {
+            fileName = fileName + StringTools.getFileSuffix(fileInfo.getFileName());
         }
         Date date = new Date();
         FileInfoEntity dbFileInfo = new FileInfoEntity();
         dbFileInfo.setFileName(fileName);
         dbFileInfo.setUpdateTime(date);
-        fileInfoMapper.updateByFileIdAndUserId(dbFileInfo,fileId,userId);
+        fileInfoMapper.updateByFileIdAndUserId(dbFileInfo, fileId, userId);
         //3.双检,避免其它线程同时修改
         FileInfoQuery fileInfoQuery = new FileInfoQuery();
         fileInfoQuery.setFileName(fileName);
@@ -486,13 +487,13 @@ public class FileInfoServiceImpl implements FileInfoService {
 
     @Override
     public void changeFileFolder(String fileIds, String filePid, String userId) {
-        if(fileIds.equals(filePid)){
+        if (fileIds.equals(filePid)) {
             throw new BusinessException("目标目录不能是原文件所在目录！");
         }
         //1.不在根目录的情况
-        if(!Constants.ZERO_STR.equals(filePid)){
+        if (!Constants.ZERO_STR.equals(filePid)) {
             FileInfoEntity fileInfo = getFileInfoByFileIdAndUserId(filePid, userId);
-            if(fileInfo==null||!FileDelFlagEnums.USING.getFlag().equals(fileInfo.getDelFlag())){
+            if (fileInfo == null || !FileDelFlagEnums.USING.getFlag().equals(fileInfo.getDelFlag())) {
                 //如果目标目录不存在，就直接抛异常
                 throw new BusinessException("目标目录不存在！");
             }
@@ -503,27 +504,199 @@ public class FileInfoServiceImpl implements FileInfoService {
         query.setFilePid(filePid);
         query.setUserId(userId);
         List<FileInfoEntity> dbFileInfoList = findListByParam(query);
-        Map<String,FileInfoEntity> dbFileNameMap=
+        Map<String, FileInfoEntity> dbFileNameMap =
                 dbFileInfoList.stream().collect(Collectors.toMap(FileInfoEntity::getFileName,
                         Function.identity(),//表示将FileInfoEntity对象本身作为Map的值
-                        (file1,file2)->file2));//合并函数，当遇到重复的键时，选择保留第二个值
+                        (file1, file2) -> file2));//合并函数，当遇到重复的键时，选择保留第二个值
         //3.查询选中的文件
-        query=new FileInfoQuery();
+        query = new FileInfoQuery();
         query.setFileIdArray(fileIdArray);
         query.setUserId(userId);
         List<FileInfoEntity> selectFileList = findListByParam(query);
         //4.修改所选文件的父目录
         for (FileInfoEntity fileInfo : selectFileList) {
-            String fileName=fileInfo.getFileName();
+            String fileName = fileInfo.getFileName();
             FileInfoEntity dbFileInfo = dbFileNameMap.get(fileName);
-            if(dbFileInfo!=null){
+            if (dbFileInfo != null) {
                 //4.1目标目录存在同名文件，就将所选文件重命名
-                fileName=StringTools.rename(fileName);
+                fileName = StringTools.rename(fileName);
                 fileInfo.setFileName(fileName);
             }
             //4.2修改选中文件的父目录
             fileInfo.setFilePid(filePid);
-            fileInfoMapper.updateByFileIdAndUserId(fileInfo,fileInfo.getFileId(),userId);
+            fileInfoMapper.updateByFileIdAndUserId(fileInfo, fileInfo.getFileId(), userId);
+        }
+    }
+
+    @Transactional
+    @Override
+    public void removeFile2RecycleBatch(String userId, String fileIds) {
+        //1.查询所有待删文件
+        String[] fileIdArray = fileIds.split(",");
+        FileInfoQuery query = new FileInfoQuery();
+        query.setUserId(userId);
+        query.setFileIdArray(fileIdArray);
+        query.setDelFlag(FileDelFlagEnums.USING.getFlag());
+        List<FileInfoEntity> fileInfoEntityList = fileInfoMapper.selectList(query);
+        if (fileInfoEntityList.isEmpty()) {
+            return;
+        }
+        //2.如果删除的是目录，那就得把目录下的所有子文件都修改标记，并且可能有多级目录嵌套，所以需要递归修改
+        ArrayList<String> delFilePidList = new ArrayList<>();//存放需要删除的目录id
+        for (FileInfoEntity fileInfo : fileInfoEntityList) {
+            if (FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFolderType())) {
+                findAllSubFolderFileList(delFilePidList, userId, fileInfo.getFileId(), fileInfo.getDelFlag());
+            }
+        }
+        //3.批量删除所有目录下的子文件
+        FileInfoEntity updateInfo = new FileInfoEntity();
+        if (!delFilePidList.isEmpty()) {
+            //回收站只需要显示首层文件，所以嵌套文件应该单独设置一个状态，即因为父目录被移到回收站而级联更新
+            updateInfo.setDelFlag(FileDelFlagEnums.PARENT2RECYCLE.getFlag());
+            fileInfoMapper.updateFileDelFlagBatch(updateInfo, userId, delFilePidList, null, FileDelFlagEnums.USING.getFlag());
+        }
+        //4.批量把首层的所有文件移到回收站
+        updateInfo.setRecoveryTime(new Date());//进入回收站的时间
+        updateInfo.setDelFlag(FileDelFlagEnums.RECYCLE.getFlag());
+        List<String> list = Arrays.stream(fileIdArray).toList();
+        fileInfoMapper.updateFileDelFlagBatch(updateInfo, userId, null, list, FileDelFlagEnums.USING.getFlag());
+    }
+    @Transactional
+    @Override
+    public void recoverFile(String userId, String fileIds) {
+        //1.查询出选中文件
+        String[] fileIdArray = fileIds.split(",");
+        FileInfoQuery query = new FileInfoQuery();
+        query.setUserId(userId);
+        query.setFileIdArray(fileIdArray);
+        query.setDelFlag(FileDelFlagEnums.RECYCLE.getFlag());
+        List<FileInfoEntity> fileInfoEntityList = fileInfoMapper.selectList(query);
+        List<String> recoverPidList = new ArrayList<>();
+        //2.如果是目录，就得把子文件都递归查出来
+        for (FileInfoEntity fileInfo : fileInfoEntityList) {
+            if (FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFolderType())) {
+                //要查出那些因为父文件被删导致自己被删的文件
+                findAllSubFolderFileList(recoverPidList, userId, fileInfo.getFileId(), FileDelFlagEnums.PARENT2RECYCLE.getFlag());
+            }
+        }
+        FileInfoEntity updateInfo=new FileInfoEntity();
+        updateInfo.setDelFlag(FileDelFlagEnums.USING.getFlag());
+        updateInfo.setLastUpdateTime(new Date());
+        //3.根据目录还原子文件
+        if (!recoverPidList.isEmpty()) {
+            for (String pid : recoverPidList) {
+                //3.1还原存在重名问题
+                checkChildName(pid,userId,FileDelFlagEnums.PARENT2RECYCLE.getFlag());
+            }
+            //3.2改成使用中的状态
+            fileInfoMapper.updateFileDelFlagBatch(updateInfo,userId,recoverPidList,null,FileDelFlagEnums.PARENT2RECYCLE.getFlag());
+        }
+        //4.还原首层文件
+        List<String> list = Arrays.asList(fileIdArray);
+        for (FileInfoEntity recoverFile : fileInfoEntityList) {
+            //4.1先得查询当前文件的原目录是否存在
+            String pid=recoverFile.getFilePid();
+            FileInfoEntity parentInfo = fileInfoMapper.selectByFileIdAndUserId(pid, userId);
+            if(parentInfo==null||!FileDelFlagEnums.USING.getFlag().equals(parentInfo.getDelFlag())){
+                //原目录被删了，那就只能还原到根目录;又或者是直接在根目录中删除的
+                pid=Constants.ZERO_STR;
+                FileInfoEntity updatePidInfo = new FileInfoEntity();
+                updatePidInfo.setFilePid(pid);
+                fileInfoMapper.updateByFileIdAndUserId(updatePidInfo,recoverFile.getFileId(),userId);
+            }
+            //4.2检查还原回去是否会和同级文件重名,重名就自动修改
+            checkChildName(pid,userId,FileDelFlagEnums.RECYCLE.getFlag());
+        }
+        //4.3还原状态
+        fileInfoMapper.updateFileDelFlagBatch(updateInfo,userId,null,list,FileDelFlagEnums.RECYCLE.getFlag());
+    }
+    @Transactional
+    @Override
+    public void delFileBatch(String userId, String fileIds, Boolean isAdmin) {
+        //1.查询出待删除文件
+        String[] fileArray = fileIds.split(",");
+        FileInfoQuery query = new FileInfoQuery();
+        query.setUserId(userId);
+        query.setUserId(userId);
+        query.setFileIdArray(fileArray);
+        query.setDelFlag(FileDelFlagEnums.RECYCLE.getFlag());
+        List<FileInfoEntity> fileInfoList = fileInfoMapper.selectList(query);
+        //2.找到所有的待删目录
+        List<String> filePidList=new ArrayList<>();
+        for (FileInfoEntity fileInfo : fileInfoList) {
+            if(FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFolderType())){
+                findAllSubFolderFileList(filePidList,userId,fileInfo.getFileId(),FileDelFlagEnums.PARENT2RECYCLE.getFlag());
+            }
+        }
+        //3.删除所有目录下的子文件
+        if(!filePidList.isEmpty()){
+            fileInfoMapper.delFileBatch(userId,filePidList,null,
+                    isAdmin?null:FileDelFlagEnums.PARENT2RECYCLE.getFlag());//超级管理员不需要过滤删除状态
+        }
+        //4.删除首层所选文件
+        fileInfoMapper.delFileBatch(userId,null,Arrays.asList(fileArray),isAdmin?null:FileDelFlagEnums.RECYCLE.getFlag());
+        //5.更新用户空间信息
+        Long useSpace = fileInfoMapper.selectUseSpace(userId);
+        UserInfoEntity userInfo = new UserInfoEntity();
+        userInfo.setUserId(userId);
+        userInfo.setUseSpace(useSpace);
+        userInfoService.updateById(userInfo);
+        //6.缓存中同步使用空间信息
+        UserSpaceDto spaceDto = redisComponent.getUseSpace(userId);
+        spaceDto.setUseSpace(useSpace);
+        redisComponent.saveUserSpaceUse(userId,spaceDto);
+    }
+
+    //检查还原回去的文件是否会和原本的目录中的文件命名冲突，如果冲突就需要自动重命名
+    private void checkChildName(String pid,String userId,Integer delFlag) {
+        //1.查询出当前目录中未被删除的文件,并用map存储，key为文件名，value为文件列表【因为文件和文件夹可以重名】
+        FileInfoQuery query = new FileInfoQuery();
+        query.setUserId(userId);
+        query.setFilePid(pid);
+        query.setDelFlag(FileDelFlagEnums.USING.getFlag());
+        List<FileInfoEntity> curUsingFileList = fileInfoMapper.selectList(query);
+        Map<String,List<FileInfoEntity>> fileNameMap=new HashMap<>();
+        for (FileInfoEntity fileInfo : curUsingFileList) {
+            String fileName=fileInfo.getFileName();
+            if(!fileNameMap.containsKey(fileName)){
+                fileNameMap.put(fileName,new ArrayList<>());
+            }
+            fileNameMap.get(fileName).add(fileInfo);
+        }
+        //2.查询出当前目录中需要还原的文件
+        query.setDelFlag(delFlag);
+        List<FileInfoEntity> recoveryFileList = fileInfoMapper.selectList(query);
+        for (FileInfoEntity fileInfo : recoveryFileList) {
+            String fileName=fileInfo.getFileName();
+            //3.没有重名的就不用管
+            if(!fileNameMap.containsKey(fileName)){
+                continue;
+            }
+            //4.重名了还得判断是否是同类型
+            List<FileInfoEntity> sameNameFileList = fileNameMap.get(fileName);
+            for (FileInfoEntity sameNameFile : sameNameFileList) {
+                if(sameNameFile.getFolderType().equals(fileInfo.getFolderType())){
+                    //同类型文件重名了就得自动重命名,这一块也可以批量修改
+                    FileInfoEntity updateInfo=new FileInfoEntity();
+                    updateInfo.setFileName(StringTools.rename(fileInfo.getFileName()));
+                    fileInfoMapper.updateByFileIdAndUserId(updateInfo,fileInfo.getFileId(),userId);
+                }
+            }
+        }
+    }
+    //递归查询当前目录下的所有目录
+    private void findAllSubFolderFileList(List<String> filePidList, String userId, String fileId, Integer delFlag) {
+        filePidList.add(fileId);
+        //1.查询出本层所有目录
+        FileInfoQuery query = new FileInfoQuery();
+        query.setUserId(userId);
+        query.setFilePid(fileId);
+        query.setDelFlag(delFlag);
+        query.setFolderType(FileFolderTypeEnums.FOLDER.getType());
+        List<FileInfoEntity> fileInfoEntityList = fileInfoMapper.selectList(query);
+        //2.继续递归
+        for (FileInfoEntity fileInfo : fileInfoEntityList) {
+            findAllSubFolderFileList(filePidList, userId, fileInfo.getFileId(), delFlag);
         }
     }
 
@@ -533,6 +706,7 @@ public class FileInfoServiceImpl implements FileInfoService {
         fileInfoQuery.setFileName(fileName);
         fileInfoQuery.setFilePid(filePid);
         fileInfoQuery.setUserId(userId);
+        fileInfoQuery.setDelFlag(FileDelFlagEnums.USING.getFlag());
         Integer count = fileInfoMapper.selectCount(fileInfoQuery);
         if (count > 0) {
             throw new BusinessException("此目录下已经存在同名文件，请修改名称");

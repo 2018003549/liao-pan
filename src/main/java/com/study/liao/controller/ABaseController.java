@@ -1,10 +1,14 @@
 package com.study.liao.controller;
 
+import com.study.liao.component.RedisComponent;
 import com.study.liao.config.AppConfig;
 import com.study.liao.entity.FileInfoEntity;
+import com.study.liao.entity.constants.BusinessException;
 import com.study.liao.entity.constants.Constants;
+import com.study.liao.entity.dto.DownloadFileDto;
 import com.study.liao.entity.dto.SessionWebUserDto;
 import com.study.liao.entity.enums.FileCategoryEnums;
+import com.study.liao.entity.enums.FileFolderTypeEnums;
 import com.study.liao.entity.enums.ResponseCodeEnum;
 import com.study.liao.entity.query.FileInfoQuery;
 import com.study.liao.entity.vo.PaginationResultVO;
@@ -13,6 +17,7 @@ import com.study.liao.service.FileInfoService;
 import com.study.liao.util.CopyTools;
 import com.study.liao.util.FileUtils;
 import com.study.liao.util.StringTools;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.apache.commons.lang.StringUtils;
@@ -21,10 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
+import java.net.URLEncoder;
 import java.util.List;
 
 
@@ -33,6 +36,8 @@ public class ABaseController {
     AppConfig appConfig;
     @Autowired
     FileInfoService fileInfoService;
+    @Autowired
+    RedisComponent redisComponent;
     private static final Logger logger = LoggerFactory.getLogger(ABaseController.class);
 
     protected static final String STATUC_SUCCESS = "success";
@@ -113,7 +118,7 @@ public class ABaseController {
         FileUtils.readFile(response, filePath);
     }
 
-    public ResponseVO getFolderInfo(String path, String userId) {
+    protected ResponseVO getFolderInfo(String path, String userId) {
         String[] pathArray = path.split("/");
         FileInfoQuery infoQuery = new FileInfoQuery();
         infoQuery.setUserId(userId);
@@ -124,5 +129,44 @@ public class ABaseController {
         infoQuery.setOrderBy(orderBy);
         List<FileInfoEntity> fileInfoEntityList = fileInfoService.findListByParam(infoQuery);
         return getSuccessResponseVO(fileInfoEntityList);
+    }
+    protected  ResponseVO createDownloadUrl(String fileId,String userId){
+        FileInfoEntity fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(fileId, userId);
+        if(fileInfo==null){
+            throw new BusinessException(ResponseCodeEnum.CODE_600);
+        }
+        if(FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFileType())){
+            //只能下载文件，不能下载目录
+            throw new BusinessException(ResponseCodeEnum.CODE_600);
+        }
+        //1.生成随机码
+        String code=StringTools.getRandomString(Constants.LENGTH_50);
+        //2.封装下载信息，并且存到redis中
+        DownloadFileDto downloadFileDto = new DownloadFileDto();
+        downloadFileDto.setDownloadCode(code);
+        downloadFileDto.setFileName(fileInfo.getFileName());
+        downloadFileDto.setFilePath(fileInfo.getFilePath());
+        redisComponent.saveDownloadCode(code,downloadFileDto);//用临时码作为key，下载信息作为value
+        //3.返回临时码
+        return getSuccessResponseVO(code);
+    }
+
+    protected void download(HttpServletRequest request, HttpServletResponse response, String code) throws UnsupportedEncodingException {
+        //1.根据临时下载码获取下载信息
+        DownloadFileDto downloadFileDto = redisComponent.getDownloadCode(code);
+        if(downloadFileDto==null){
+            throw new BusinessException("下载信息过期!!!");
+        }
+        //2.下载文件
+        String filePath=appConfig.getProjectFolder()+Constants.FILE_FOLDER_FILE+downloadFileDto.getFilePath();
+        String fileName=downloadFileDto.getFileName();
+        if (request.getHeader("User-Agent").toLowerCase().indexOf("msie")>0) {
+            //IE浏览
+            fileName= URLEncoder.encode(fileName,"UTF-8");
+        }else {
+            fileName=new String(fileName.getBytes("UTF-8"),"ISO8859-1");
+        }
+        response.setHeader("Content-Disposition","attachment;filename=\""+fileName+"\"");
+        FileUtils.readFile(response,filePath);
     }
 }
