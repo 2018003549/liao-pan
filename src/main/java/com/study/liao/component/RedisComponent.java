@@ -1,6 +1,5 @@
 package com.study.liao.component;
 
-import com.liao.common.utils.Constant;
 import com.study.liao.dao.FileInfoMapper;
 import com.study.liao.entity.UserInfoEntity;
 import com.study.liao.entity.constants.Constants;
@@ -88,19 +87,40 @@ public class RedisComponent {
 
     /**
      * 保存下载信息，通过临时下载code标识
-     * @param code 临时下载code
+     *
+     * @param code            临时下载code
      * @param downloadFileDto 下载基本信息，包含文件名、文件存储路径
      */
     public void saveDownloadCode(String code, DownloadFileDto downloadFileDto) {
-        redisUtils.setex(Constants.REDIS_KEY_DOWNLOAD+code,downloadFileDto,Constants.REDIS_KEY_EXPIRES_FIVE_MIN);
+        redisUtils.setex(Constants.REDIS_KEY_DOWNLOAD + code, downloadFileDto, Constants.REDIS_KEY_EXPIRES_FIVE_MIN);
     }
 
     /**
      * 根据临时下载code获取到下载信息
+     *
      * @param code 临时下载code
      * @return 下载基本信息，包含文件名、文件存储路径
      */
-    public DownloadFileDto getDownloadCode(String code){
-        return (DownloadFileDto)redisUtils.get(Constants.REDIS_KEY_DOWNLOAD+code);
+    public DownloadFileDto getDownloadCode(String code) {
+        return (DownloadFileDto) redisUtils.get(Constants.REDIS_KEY_DOWNLOAD + code);
+    }
+
+    public void saveSysSettings(SysSettingsDto sysSettingsDto) {
+        redisUtils.set(Constants.REDIS_KEY_SYS_SETTING, sysSettingsDto);
+    }
+
+    public void saveUserTotalSpace(String userId,Long totalSpace) {
+        UserSpaceDto userSpaceDto = new UserSpaceDto();
+        Long useSpace = fileInfoMapper.selectUseSpace(userId);
+        userSpaceDto.setUseSpace(useSpace);
+        userSpaceDto.setTotalSpace(totalSpace);
+        redisUtils.setex(Constants.REDIS_KEY_USER_SPACE_USE+userId,userSpaceDto,Constants.REDIS_KEY_EXPIRES_DAY);
+    }
+
+    public void saveUserStatus(String userId, int status) {
+        redisUtils.setex(Constants.REDIS_USER_STATUS+userId,status,Constants.REDIS_KEY_EXPIRES_ONE_HOUR);
+    }
+    public Integer getUserStatus(String userId) {
+        return (Integer) redisUtils.get(Constants.REDIS_USER_STATUS+userId);
     }
 }

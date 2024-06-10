@@ -1,7 +1,7 @@
 package com.study.liao.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.liao.common.utils.PageUtils;
+import com.common.utils.PageUtils;
 import com.study.liao.entity.EmailCodeEntity;
 
 import java.util.Map;

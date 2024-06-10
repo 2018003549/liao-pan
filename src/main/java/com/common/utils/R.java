@@ -6,7 +6,7 @@
  * 版权所有，侵权必究！
  */
 
-package com.liao.common.utils;
+package com.common.utils;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;

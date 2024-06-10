@@ -1,7 +1,7 @@
 package com.study.liao.service.impl;
 
-import com.liao.common.utils.PageUtils;
-import com.liao.common.utils.Query;
+import com.common.utils.PageUtils;
+import com.common.utils.Query;
 import com.study.liao.component.RedisComponent;
 import com.study.liao.config.AppConfig;
 import com.study.liao.entity.constants.BusinessException;
@@ -100,7 +100,7 @@ public class EmailCodeServiceImpl extends ServiceImpl<EmailCodeDao, EmailCodeEnt
             //2.设置邮件信息
             helper.setFrom(appConfig.getSendUserName());//设置发件人
             helper.setTo(toEmail);//设置收件邮箱
-            helper.setSubject(sysSettingsDto.getRegisterMailTitle());//设置标题
+            helper.setSubject(sysSettingsDto.getRegisterEmailTitle());//设置标题
             //因为sysSettingsDto中验证码内容设置了占位符，所以可以用code去替换占位符
             helper.setText(String.format(sysSettingsDto.getRegisterEmailContent(), code));
             javaMailSender.send(message);//发送邮件

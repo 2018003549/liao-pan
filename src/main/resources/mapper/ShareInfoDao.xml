@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.study.liao.dao.ShareInfoDao">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.study.liao.entity.ShareInfoEntity" id="shareInfoMap">
+        <result property="shareId" column="share_id"/>
+        <result property="fileId" column="file_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="validType" column="valid_type"/>
+        <result property="expireTime" column="expire_time"/>
+        <result property="shareTime" column="share_time"/>
+        <result property="code" column="code"/>
+        <result property="showCount" column="show_count"/>
+    </resultMap>
+
+
+</mapper>

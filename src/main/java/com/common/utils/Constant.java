@@ -6,12 +6,12 @@
  * 版权所有，侵权必究！
  */
 
-package com.liao.common.utils;
+package com.common.utils;
 
 
-import com.liao.common.validator.group.AliyunGroup;
-import com.liao.common.validator.group.QcloudGroup;
-import com.liao.common.validator.group.QiniuGroup;
+import com.common.validator.group.AliyunGroup;
+import com.common.validator.group.QcloudGroup;
+import com.common.validator.group.QiniuGroup;
 
 import java.util.Optional;
 import java.util.stream.Stream;

@@ -1,4 +1,4 @@
-package com.liao.common.utils;
+package com.common.utils;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpResponse;

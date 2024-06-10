@@ -47,6 +47,7 @@ public class Constants {
 
     public static final String VIEW_OBJ_RESULT_KEY = "result";
 
+
     /**
      * redis key 相关
      */
@@ -78,6 +79,6 @@ public class Constants {
     public static final String REDIS_KEY_USER_SPACE_USE = "easypan:user:spaceuse:";
 
     public static final String REDIS_KEY_USER_FILE_TEMP_SIZE = "easypan:user:file:temp:";
-
+    public static final String REDIS_USER_STATUS="easypan:user:status:";
     public static final Integer USER_DEFAULT_TOTALSZIE = 1000;
 }

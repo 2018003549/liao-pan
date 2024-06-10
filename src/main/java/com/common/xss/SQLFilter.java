@@ -6,10 +6,10 @@
  * 版权所有，侵权必究！
  */
 
-package com.liao.common.xss;
+package com.common.xss;
 
 
-import com.liao.common.utils.RRException;
+import com.common.utils.RRException;
 import org.apache.commons.lang.StringUtils;
 
 /**

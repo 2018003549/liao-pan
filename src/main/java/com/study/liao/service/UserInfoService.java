@@ -1,9 +1,10 @@
 package com.study.liao.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.liao.common.utils.PageUtils;
+import com.common.utils.PageUtils;
 import com.study.liao.entity.UserInfoEntity;
 import com.study.liao.entity.dto.SessionWebUserDto;
+import com.study.liao.entity.query.UserInfoQuery;
 
 import java.util.Map;
 
@@ -26,5 +27,11 @@ public interface UserInfoService extends IService<UserInfoEntity> {
     void resetPwd(String email, String password, String emailCode);
 
     Integer updateUseSpace(String userId, Long useSpace, Long totalSpace);
+
+    PageUtils loadUserList(UserInfoQuery userInfoQuery);
+
+    void updateUserStatus(String userId, Integer status);
+
+    void updateUserSpace(String userId, Integer changeSpace);
 }
 

@@ -6,7 +6,7 @@
  * 版权所有，侵权必究！
  */
 
-package com.liao.common.utils;
+package com.common.utils;
 
 /**
  * 自定义异常

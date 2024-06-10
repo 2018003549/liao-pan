@@ -1,4 +1,4 @@
-package com.liao.common.validator.group;
+package com.common.validator.group;
 
 import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;

@@ -2,10 +2,14 @@ package com.study.liao.aspect;
 
 import com.study.liao.annotation.GlobalInterceptor;
 import com.study.liao.annotation.VerifyParam;
+import com.study.liao.component.RedisComponent;
+import com.study.liao.entity.UserInfoEntity;
 import com.study.liao.entity.constants.BusinessException;
 import com.study.liao.entity.constants.Constants;
 import com.study.liao.entity.dto.SessionWebUserDto;
 import com.study.liao.entity.enums.ResponseCodeEnum;
+import com.study.liao.entity.enums.UserStatusEnum;
+import com.study.liao.service.UserInfoService;
 import com.study.liao.util.StringTools;
 import com.study.liao.util.VerifyUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +20,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -29,6 +34,10 @@ import java.lang.reflect.Parameter;
 @Aspect
 @Component("GlobalOperationAspect")
 public class GlobalOperationAspect {
+    @Autowired
+    RedisComponent redisComponent;
+    @Autowired
+    UserInfoService userInfoService;
     private static final String TYPE_STRING = "java.lang.String";
     private static final String TYPE_INTEGER = "java.lang.Integer";
     private static final String TYPE_LONG = "java.lang.Long";
@@ -73,9 +82,22 @@ public class GlobalOperationAspect {
         if(null==userDto){
             throw new BusinessException(ResponseCodeEnum.CODE_901);
         }
-        if(checkAdmin&&!userDto.getIsAdmin()){
+        if(checkAdmin&&!userDto.getAdmin()){
             throw new BusinessException(ResponseCodeEnum.CODE_404);
         }
+        String userId = userDto.getUserId();
+        Integer userStatus = redisComponent.getUserStatus(userId);
+        if(userStatus==null){
+            //缓存过期就需要重新从数据库中查
+            UserInfoEntity userInfo = userInfoService.getById(userId);
+            userStatus=userInfo.getStatus();
+        }
+        if(UserStatusEnum.DISABLE.getStatus().equals(userStatus)){
+            //禁用就强制下线
+            session.invalidate();
+            throw new BusinessException("你已被已禁用!!!");
+        }
+        redisComponent.saveUserStatus(userId,userStatus);
     }
 
     private void validateParams(Method m, Object[] arguments) throws BusinessException {

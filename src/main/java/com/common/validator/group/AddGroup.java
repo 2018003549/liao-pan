@@ -6,12 +6,12 @@
  * 版权所有，侵权必究！
  */
 
-package com.liao.common.validator.group;
+package com.common.validator.group;
 
 /**
- * 腾讯云
+ * 新增数据 Group
  *
  * @author Mark sunlightcs@gmail.com
  */
-public interface QcloudGroup {
+public interface AddGroup {
 }

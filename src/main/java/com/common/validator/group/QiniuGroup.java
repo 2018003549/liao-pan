@@ -6,12 +6,12 @@
  * 版权所有，侵权必究！
  */
 
-package com.liao.common.validator.group;
+package com.common.validator.group;
 
 /**
- * 新增数据 Group
+ * 七牛
  *
  * @author Mark sunlightcs@gmail.com
  */
-public interface AddGroup {
+public interface QiniuGroup {
 }

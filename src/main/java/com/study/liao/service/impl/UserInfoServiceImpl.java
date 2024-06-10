@@ -9,6 +9,7 @@ import com.study.liao.entity.dto.SessionWebUserDto;
 import com.study.liao.entity.dto.SysSettingsDto;
 import com.study.liao.entity.dto.UserSpaceDto;
 import com.study.liao.entity.enums.UserStatusEnum;
+import com.study.liao.entity.query.UserInfoQuery;
 import com.study.liao.service.EmailCodeService;
 import com.study.liao.util.StringTools;
 import org.apache.commons.lang3.ArrayUtils;
@@ -16,13 +17,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.liao.common.utils.PageUtils;
-import com.liao.common.utils.Query;
+import com.common.utils.PageUtils;
+import com.common.utils.Query;
 
 import com.study.liao.dao.UserInfoDao;
 import com.study.liao.entity.UserInfoEntity;
@@ -40,6 +43,8 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
     AppConfig appConfig;
     @Autowired
     FileInfoMapper fileInfoMapper;
+    @Autowired
+    UserInfoDao userInfoDao;
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void register(String email, String nickName, String password, String emailCode) {
@@ -62,6 +67,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         userInfo.setUserId(userId);
         userInfo.setEmail(email);
         userInfo.setNickName(nickName);
+        userInfo.setJoinTime(new Date());
         userInfo.setPassword(StringTools.encodeByMd5(password));
         userInfo.setStatus(UserStatusEnum.ENABLE.getStatus());
         userInfo.setUseSpace(0L);
@@ -97,19 +103,18 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         }
         //2.更新登录时间
         String userId = userInfoEntity.getUserId();
-        UserInfoEntity userInfo = new UserInfoEntity();
-        userInfo.setLastLoginTime(new Date());
-        userInfo.setUserId(userId);
+        UserInfoEntity updateInfo = new UserInfoEntity();
+        updateInfo.setLastLoginTime(new Date());
+        updateInfo.setUserId(userId);
         updateById(userInfoEntity);
         SessionWebUserDto sessionWebUserDto = new SessionWebUserDto();
-        sessionWebUserDto.setNickName(userInfo.getNickName());
-        sessionWebUserDto.setNickName(userInfo.getUserId());
-        sessionWebUserDto.setUserId(userInfo.getUserId());
+        sessionWebUserDto.setNickName(userInfoEntity.getNickName());
+        sessionWebUserDto.setUserId(userId);
         //3.判断是否为管理员【可能有多个管理员】
         if(ArrayUtils.contains(appConfig.getAdminUserName().split(","),email)){
-            sessionWebUserDto.setIsAdmin(true);
+            sessionWebUserDto.setAdmin(true);
         }else {
-            sessionWebUserDto.setIsAdmin(false);
+            sessionWebUserDto.setAdmin(false);
         }
         //4.更新用户空间信息
         UserSpaceDto userSpaceDto = new UserSpaceDto();
@@ -119,7 +124,9 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         UserInfoEntity lastUserInfo = getById(userId);
         userSpaceDto.setTotalSpace(lastUserInfo.getTotalSpace());
         //刷新缓存中的用户空间信息
-        redisComponent.saveUserSpaceUse(userInfo.getUserId(),userSpaceDto);
+        redisComponent.saveUserSpaceUse(userId,userSpaceDto);
+        //5.redis中存储用户登录状态
+        redisComponent.saveUserStatus(userId,userInfoEntity.getStatus().intValue());
         return sessionWebUserDto;
     }
 
@@ -142,5 +149,47 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
     @Override
     public Integer updateUseSpace(String userId, Long useSpace, Long totalSpace) {
         return baseMapper.updateUseSpace(userId,useSpace,totalSpace);
+    }
+
+    @Override
+    public PageUtils loadUserList(UserInfoQuery userInfoQuery) {
+        HashMap<String,Object>params=new HashMap<>();
+        params.put("pageSize",userInfoQuery.getPageNo());
+        params.put("currPage",userInfoQuery.getPageNo());
+        IPage<UserInfoEntity> page = this.page(
+                new Query<UserInfoEntity>().getPage(params),
+                new QueryWrapper<UserInfoEntity>()
+        );
+        List<UserInfoEntity> records = page.getRecords();
+        if(records!=null){
+            page.setTotal(records.size());
+        }
+        return new PageUtils(page);
+    }
+
+    @Override
+    public void updateUserStatus(String userId, Integer status) {
+        //1.先查询出修改的用户是否为管理员
+        UserInfoEntity userInfo = getById(userId);
+        if(userInfo==null){
+            throw new BusinessException("用户不存在!!!");
+        }
+        if(ArrayUtils.contains(appConfig.getAdminUserName().split(","),userInfo.getEmail())){
+            throw new BusinessException("无法修改管理员的状态!!!");
+        }
+        //2.更新用户状态
+        userInfo.setStatus(status);
+        updateById(userInfo);
+        //3.修改缓存中的用户状态
+        redisComponent.saveUserStatus(userId,status);
+    }
+
+    @Override
+    public void updateUserSpace(String userId, Integer changeSpace) {
+        //1.数据库中更新用户总空间信息
+        Long space=changeSpace*Constants.MB;
+        userInfoDao.updateUseSpace(userId,null,space);
+        //2.缓存相应也更新
+        redisComponent.saveUserTotalSpace(userId,space);
     }
 }
