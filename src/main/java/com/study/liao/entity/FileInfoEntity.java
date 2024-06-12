@@ -86,4 +86,8 @@ public class FileInfoEntity implements Serializable {
 	 * 更加详细的文件类型
 	 */
 	private Integer fileType;
+	/**
+	 * 用户名称，在管理员页面需要展示
+	 */
+	private String nickName;
 }

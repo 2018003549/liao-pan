@@ -106,7 +106,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoDao, UserInfoEntity
         UserInfoEntity updateInfo = new UserInfoEntity();
         updateInfo.setLastLoginTime(new Date());
         updateInfo.setUserId(userId);
-        updateById(userInfoEntity);
+        updateById(updateInfo);
         SessionWebUserDto sessionWebUserDto = new SessionWebUserDto();
         sessionWebUserDto.setNickName(userInfoEntity.getNickName());
         sessionWebUserDto.setUserId(userId);

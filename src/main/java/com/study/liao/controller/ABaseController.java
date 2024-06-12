@@ -6,6 +6,7 @@ import com.study.liao.entity.FileInfoEntity;
 import com.study.liao.entity.constants.BusinessException;
 import com.study.liao.entity.constants.Constants;
 import com.study.liao.entity.dto.DownloadFileDto;
+import com.study.liao.entity.dto.SessionShareDto;
 import com.study.liao.entity.dto.SessionWebUserDto;
 import com.study.liao.entity.enums.FileCategoryEnums;
 import com.study.liao.entity.enums.FileFolderTypeEnums;
@@ -38,7 +39,6 @@ public class ABaseController {
     FileInfoService fileInfoService;
     @Autowired
     RedisComponent redisComponent;
-    private static final Logger logger = LoggerFactory.getLogger(ABaseController.class);
 
     protected static final String STATUC_SUCCESS = "success";
 
@@ -135,7 +135,7 @@ public class ABaseController {
         if(fileInfo==null){
             throw new BusinessException(ResponseCodeEnum.CODE_600);
         }
-        if(FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFileType())){
+        if(FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFolderType())){
             //只能下载文件，不能下载目录
             throw new BusinessException(ResponseCodeEnum.CODE_600);
         }
@@ -168,5 +168,8 @@ public class ABaseController {
         }
         response.setHeader("Content-Disposition","attachment;filename=\""+fileName+"\"");
         FileUtils.readFile(response,filePath);
+    }
+    protected SessionShareDto getSessionShareDto(HttpSession session,String shareId){
+        return (SessionShareDto) session.getAttribute(Constants.SESSION_SHARE_KEY+shareId);
     }
 }

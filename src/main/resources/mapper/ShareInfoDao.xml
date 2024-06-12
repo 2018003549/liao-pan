@@ -14,6 +14,11 @@
         <result property="code" column="code"/>
         <result property="showCount" column="show_count"/>
     </resultMap>
+    <update id="updateShareShowCount">
+        update share_info
+        set show_count=show_count+1
+        where share_id=#{shareId}
+    </update>
 
 
 </mapper>

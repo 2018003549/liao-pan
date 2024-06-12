@@ -59,5 +59,14 @@ public class ShareInfoEntity implements Serializable {
 	 */
 	@TableField(exist = false)
 	private String fileName;
-
+	/**
+	 * 分享人用户名，不在数据库中
+	 */
+	@TableField(exist = false)
+	private String nickName;
+	/**
+	 * 是否是当前用户分享的
+	 */
+	@TableField(exist = false)
+	private Boolean currentUser;
 }

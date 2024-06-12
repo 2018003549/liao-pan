@@ -5,6 +5,7 @@ import java.util.HashMap;
 import com.common.utils.PageUtils;
 import com.study.liao.annotation.GlobalInterceptor;
 import com.study.liao.annotation.VerifyParam;
+import com.study.liao.entity.ShareInfoEntity;
 import com.study.liao.entity.dto.SessionWebUserDto;
 import com.study.liao.entity.vo.ResponseVO;
 import com.study.liao.service.ShareInfoService;
@@ -47,8 +48,8 @@ public class ShareInfoController extends ABaseController {
     public ResponseVO shareFile(HttpSession session, @VerifyParam(required = true) String fileId,
                                 @VerifyParam(required = true) Integer validType, String code) {
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
-        shareInfoService.shareFile(webUserDto.getUserId(), fileId, validType, code);
-        return getSuccessResponseVO(null);
+        ShareInfoEntity shareInfoEntity=shareInfoService.shareFile(webUserDto.getUserId(), fileId, validType, code);
+        return getSuccessResponseVO(shareInfoEntity);
     }
 
     /**

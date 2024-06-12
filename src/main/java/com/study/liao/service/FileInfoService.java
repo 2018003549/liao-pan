@@ -6,7 +6,6 @@ import com.study.liao.entity.dto.SessionWebUserDto;
 import com.study.liao.entity.dto.UploadResultDto;
 import com.study.liao.entity.query.FileInfoQuery;
 import com.study.liao.entity.vo.PaginationResultVO;
-import org.apache.tomcat.jni.FileInfo;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -24,7 +23,7 @@ public interface FileInfoService extends IService<FileInfoEntity> {
      * 根据条件查询列表
      */
     List<FileInfoEntity> findListByParam(FileInfoQuery param);
-    PaginationResultVO<FileInfo> findListByPage(FileInfoQuery param);
+    PaginationResultVO<FileInfoEntity> findListByPage(FileInfoQuery param);
 
     UploadResultDto uploadFile(SessionWebUserDto webUserDto, String fileId, MultipartFile file, String fileName, String filePid, String fileMd5, Integer chunkIndex, Integer chunks);
     FileInfoEntity getFileInfoByFileIdAndUserId(String fileId, String userId);
@@ -45,5 +44,10 @@ public interface FileInfoService extends IService<FileInfoEntity> {
     void recoverFile(String userId, String fileIds);
 
     void delFileBatch(String userId, String fileIds, Boolean isAdmin);
+
+    void checkRootFilePid(String filePid, String shareUserId, String fileId);
+
+    void saveShare(String shareRootPid, String shareFileIds, String myFolderId,
+                   String shareUserId, String currentUserId);
 }
 

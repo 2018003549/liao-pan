@@ -175,12 +175,12 @@ public class UserInfoController {
             if(!defaultAvatar.exists()){
                 //4.如果默认头像都不存在就要抛异常，提醒管理员去设置
                 response.sendError(500,"请设置系统默认头像");
+                printNoDefaultImage(response);
             }
             avatarPath=defalutPath;
         }
         response.setContentType("image/jpg");
         FileUtils.readFile(response,avatarPath);
-        printNoDefaultImage(response);
     }
     private void printNoDefaultImage(HttpServletResponse response) {
         response.setHeader(CONTENT_TYPE, CONTENT_TYPE_VALUE);

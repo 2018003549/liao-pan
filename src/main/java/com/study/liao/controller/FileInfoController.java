@@ -86,7 +86,7 @@ public class FileInfoController extends ABaseController {
     }
 
     @RequestMapping("/getImage/{imageFolder}/{imageName}")
-    @GlobalInterceptor(checkParams = true)
+    @GlobalInterceptor(checkParams = true,checkLogin = false)
     public void getImage(HttpServletResponse response, @PathVariable("imageFolder") String imageFolder
             , @PathVariable("imageName") String imageName) {
         super.getImage(response, imageFolder, imageName);
@@ -121,6 +121,9 @@ public class FileInfoController extends ABaseController {
     public ResponseVO getFolderInfo(HttpSession session, @VerifyParam(required = true) String path) {
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         String userId = webUserDto.getUserId();
+        if(webUserDto.getAdmin()){
+            userId=null;//如果是管理员，那就全查，不用筛选用户信息
+        }
         return super.getFolderInfo(path, userId);
     }
 

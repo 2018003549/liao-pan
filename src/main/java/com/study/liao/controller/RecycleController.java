@@ -2,6 +2,7 @@ package com.study.liao.controller;
 
 import com.study.liao.annotation.GlobalInterceptor;
 import com.study.liao.annotation.VerifyParam;
+import com.study.liao.entity.FileInfoEntity;
 import com.study.liao.entity.dto.SessionWebUserDto;
 import com.study.liao.entity.enums.FileDelFlagEnums;
 import com.study.liao.entity.query.FileInfoQuery;
@@ -30,7 +31,7 @@ public class RecycleController extends ABaseController{
         query.setUserId(webUserDto.getUserId());
         query.setDelFlag(FileDelFlagEnums.RECYCLE.getFlag());
         query.setOrderBy("recovery_time desc");
-        PaginationResultVO<FileInfo> listByPage = fileInfoService.findListByPage(query);
+        PaginationResultVO<FileInfoEntity> listByPage = fileInfoService.findListByPage(query);
         return getSuccessResponseVO(convert2PaginationVO(listByPage, FileInfoVO.class));
     }
 
