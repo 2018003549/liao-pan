@@ -16,6 +16,7 @@ import com.study.liao.entity.enums.*;
 import com.study.liao.entity.query.FileInfoQuery;
 import com.study.liao.entity.query.SimplePage;
 import com.study.liao.entity.vo.PaginationResultVO;
+import com.study.liao.service.FileRefInfoService;
 import com.study.liao.service.UserInfoService;
 import com.study.liao.util.DateUtil;
 import com.study.liao.util.ProcessUtils;
@@ -54,6 +55,8 @@ public class FileInfoServiceImpl implements FileInfoService {
     private UserInfoService userInfoService;
     @Autowired
     AppConfig appConfig;
+    @Autowired
+    FileRefInfoService fileRefInfoService;
     @Lazy   //防止循环依赖
     @Autowired
     FileInfoServiceImpl fileInfoService;
@@ -122,6 +125,8 @@ public class FileInfoServiceImpl implements FileInfoService {
                     fileInfoMapper.insert(dbFile);//写入数据库
                     //4.3更新用户使用空间
                     updateUserSpace(userId, dbFile.getFileSize());
+                    //4.4给该文件计数+1
+                    addFileRef(fileMd5, null);
                     return uploadResultDto;
                 }
             }
@@ -209,6 +214,22 @@ public class FileInfoServiceImpl implements FileInfoService {
         }
     }
 
+    /**
+     * 增加文件计数
+     *
+     * @param fileMd5  文件md5值
+     * @param filePath 文件路径，首次上传需要记录文件存储路径，如果为空就说明是秒传
+     */
+    private void addFileRef(String fileMd5, String filePath) {
+        if (filePath == null) {
+            //1.秒传就直接给相应文件计数+1,采用乐观锁修改数量
+            fileRefInfoService.updateFileCount(fileMd5);
+        } else {
+            //2.否则就是首次上传，需要新增引用记录
+            fileRefInfoService.insertFileCount(fileMd5, filePath);
+        }
+    }
+
     private String fileRename(String filePid, String userId, String fileName) {
         FileInfoQuery fileInfoQuery = new FileInfoQuery();
         fileInfoQuery.setUserId(userId);
@@ -279,6 +300,8 @@ public class FileInfoServiceImpl implements FileInfoService {
                     FileUtils.copyFile(new File(targetFilePath), new File(coverPath));
                 }
             }
+            //5.转码成功保存文件引用信息
+            addFileRef(fileInfo.getFileMd5(), fileInfo.getFilePath());
         } catch (Exception e) {
             log.error("文件转码失败，{}", e);
             e.printStackTrace();
@@ -630,11 +653,21 @@ public class FileInfoServiceImpl implements FileInfoService {
         }
         //3.删除所有目录下的子文件
         if (!filePidList.isEmpty()) {
+            //3.1先批量修改子文件对应的引用计数
+            decreaseFileRefBatch(userId, filePidList, null,
+                    isAdmin ? null : FileDelFlagEnums.PARENT2RECYCLE.getFlag());
+            //3.2再批量删除子文件
             fileInfoMapper.delFileBatch(userId, filePidList, null,
                     isAdmin ? null : FileDelFlagEnums.PARENT2RECYCLE.getFlag());//超级管理员不需要过滤删除状态
         }
         //4.删除首层所选文件
-        fileInfoMapper.delFileBatch(userId, null, Arrays.asList(fileArray), isAdmin ? null : FileDelFlagEnums.RECYCLE.getFlag());
+        List<String> list = Arrays.asList(fileArray);
+        //4.1批量修改首层文件的引用计数
+        decreaseFileRefBatch(userId, null, list,
+                isAdmin ? null : FileDelFlagEnums.RECYCLE.getFlag());
+        //4.2批量删除首层文件
+        fileInfoMapper.delFileBatch(userId, null, list,
+                isAdmin ? null : FileDelFlagEnums.RECYCLE.getFlag());
         //5.更新用户空间信息
         Long useSpace = fileInfoMapper.selectUseSpace(userId);
         UserInfoEntity userInfo = new UserInfoEntity();
@@ -645,6 +678,28 @@ public class FileInfoServiceImpl implements FileInfoService {
         UserSpaceDto spaceDto = redisComponent.getUseSpace(userId);
         spaceDto.setUseSpace(useSpace);
         redisComponent.saveUserSpaceUse(userId, spaceDto);
+    }
+
+    private void decreaseFileRefBatch(String userId, List<String> filePidList, List<String> fileIdList, Integer delFlag) {
+        FileInfoQuery query = new FileInfoQuery();
+        List<FileInfoEntity> fileInfoList;
+        if (filePidList != null) {
+            //1.根据父id修改子文件的引用计数
+            //查询到所有的子文件
+            query.setFilePidArray(filePidList.toArray(new String[0]));
+            query.setUserId(userId);
+            query.setDelFlag(delFlag);
+            fileInfoList = fileInfoMapper.selectList(query);
+        } else {
+            //2.否则就是直接根据id去修改对应文件的计数
+            query = new FileInfoQuery();
+            query.setFileIdArray(fileIdList.toArray(new String[0]));
+            query.setUserId(userId);
+            query.setDelFlag(delFlag);
+            fileInfoList = fileInfoMapper.selectList(query);
+        }
+        //3.调用文件引用的功能修改计数
+        fileRefInfoService.decreaseFileRefBatch(fileInfoList);
     }
 
     /**
@@ -708,6 +763,7 @@ public class FileInfoServiceImpl implements FileInfoService {
 
     /**
      * 递归复制文件信息
+     *
      * @param copyFileList  存放复制的文件实体
      * @param fileInfo      当前操作的源文件
      * @param sourceUserId  源文件用户id

@@ -54,7 +54,6 @@ public class RedisComponent {
 
     /**
      * 根据用户id和文件id获取到缓存中用户临时文件的大小
-     *
      * @param userId
      * @param fileId
      * @return 临时文件的大小
@@ -72,7 +71,6 @@ public class RedisComponent {
 
     /**
      * 保存/更新用户的临时文件大小
-     *
      * @param userId
      * @param fileId
      * @param fileSize 新添加的分片大小

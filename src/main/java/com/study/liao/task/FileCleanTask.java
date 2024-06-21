@@ -1,4 +1,4 @@
-package com.study.task;
+package com.study.liao.task;
 
 import com.study.liao.entity.FileInfoEntity;
 import com.study.liao.entity.enums.FileDelFlagEnums;

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.study.liao.dao.FileRefInfoDao">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.study.liao.entity.FileRefInfoEntity" id="fileRefInfoMap">
+        <result property="fileMd5" column="file_md5"/>
+        <result property="count" column="count"/>
+        <result property="filePath" column="file_path"/>
+    </resultMap>
+    <update id="addFileCount">
+        update file_ref_info
+        set count=count+1
+        where file_md5=#{fileMd5}
+    </update>
+    <update id="decreaseFileRefBatch" parameterType="java.util.Map">
+        <foreach collection="md5Map" item="value" index="key" separator=";">
+            UPDATE file_ref_info
+            SET count = count - #{value}
+            WHERE file_md5 = #{key}
+        </foreach>
+    </update>
+</mapper>
