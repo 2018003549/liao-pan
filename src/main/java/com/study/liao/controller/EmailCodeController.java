@@ -77,7 +77,6 @@ public class EmailCodeController {
     @RequestMapping("/delete")
     public R delete(@RequestBody String[] emails){
 		emailCodeService.removeByIds(Arrays.asList(emails));
-
         return R.ok();
     }
 

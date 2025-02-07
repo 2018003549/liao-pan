@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.study.liao.dao.UserGroupDetailInfoDao">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.study.liao.entity.UserGroupDetailInfoEntity" id="userGroupDetailInfoMap">
+        <result property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="groupId" column="group_id"/>
+        <result property="isDeleted" column="is_deleted"/>
+        <result property="joinTime" column="join_time"/>
+    </resultMap>
+    <resultMap type="com.study.liao.entity.dto.UserGroupDetailDTO" id="userGroupDetailDTOMap">
+        <result property="groupName" column="group_name"/>
+        <result property="groupId" column="group_id"/>
+        <result property="createById" column="create_by_id"/>
+        <result property="maxSize" column="max_size"/>
+        <result property="currentSize" column="currentSize"/>
+        <result property="joinTime" column="join_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="approvalStatus" column="approval_status"/>
+    </resultMap>
+    <select id="selectCurrentUserGroupDetailList" resultMap="userGroupDetailDTOMap">
+        SELECT ugroup.group_name,
+        ugroup.create_by_id,
+        ugroup.max_size,
+        ugroup.create_time,
+        ugroup.description,
+        detail.join_time,
+        detail.group_id,
+        detail.approval_status
+        FROM user_group_detail_info detail
+        JOIN user_group_info ugroup ON ugroup.id = detail.group_id
+        AND ugroup.is_deleted = 0
+        WHERE detail.is_deleted = 0
+        <if test="query.userId != null">
+            and user_id = #{query.userId}
+        </if>
+        <if test="query.groupName !=null and query.groupName!=''">
+            and ugroup.group_name like concat('%', #{query.groupName}, '%')
+        </if>
+        <if test="query.approvalStatus != null">
+            and approval_status = #{query.approvalStatus}
+        </if>
+    </select>
+    <select id="selectUserGroupListByQuery" resultMap="userGroupDetailDTOMap">
+        SELECT ugroup.group_name,
+               ugroup.create_by_id,
+               ugroup.max_size,
+               ugroup.create_time,
+               ugroup.description,
+               ugroup.id as group_id
+        FROM  user_group_info ugroup
+        WHERE ugroup.is_deleted = 0
+        <if test="query.keyword !=null and query.keyword!=''">
+            and (ugroup.group_id like concat('%', #{query.keyword}, '%')
+            or ugroup.group_name like concat('%', #{query.keyword}, '%'))
+        </if>
+    </select>
+
+</mapper>

@@ -28,6 +28,8 @@ public class Constants {
     public static final String FILE_FOLDER_FILE = "/file/";
 
     public static final String FILE_FOLDER_TEMP = "/temp/";
+    // 用于存储在线编辑文件的本地路径
+    public static final String ONLINE_FILE_LOCAL_PATH = "/onlineFile/";
 
     public static final String IMAGE_PNG_SUFFIX = ".png";
 

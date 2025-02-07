@@ -6,10 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 
 @Slf4j
 public class FileUtils {
@@ -49,6 +46,64 @@ public class FileUtils {
                     log.error("IO异常", e);
                 }
             }
+        }
+    }
+
+    public static void downloadFile(HttpServletResponse response, byte[] fileData, String fileName) {
+        OutputStream out = null;
+        try {
+            // 设置响应内容类型
+            response.setContentType("application/octet-stream");
+            // 设置文件下载时的文件名
+            response.setHeader("Content-Disposition", "attachment;filename=" + fileName);
+
+            // 获取输出流
+            out = response.getOutputStream();
+
+            // 写入文件数据
+            out.write(fileData);
+            out.flush();
+        } catch (IOException e) {
+            log.error("文件下载异常", e);
+        } finally {
+            if (out != null) {
+                try {
+                    out.close();
+                } catch (IOException e) {
+                    log.error("IO异常", e);
+                }
+            }
+        }
+    }
+    public static void readFile(HttpServletResponse response, byte[] fileData, String fileName) {
+        OutputStream out = null;
+        try {
+            // 设置响应内容类型
+            response.setContentType("application/octet-stream");
+            // 设置文件下载时的文件名
+            response.setHeader("Content-Disposition", "attachment;filename=" + fileName);
+            // 获取输出流
+            out = response.getOutputStream();
+            // 写入文件数据
+            out.write(fileData);
+            out.flush();
+        } catch (IOException e) {
+            log.error("文件下载异常", e);
+        } finally {
+            if (out != null) {
+                try {
+                    out.close();
+                } catch (IOException e) {
+                    log.error("IO异常", e);
+                }
+            }
+        }
+    }
+
+    // 将字节流保存为本地文件
+    public static void saveFileToLocal(byte[] fileData, String filePath) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+            fos.write(fileData);  // 将字节数据写入文件
         }
     }
 }
