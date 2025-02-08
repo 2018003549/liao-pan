@@ -13,6 +13,7 @@ import com.study.liao.entity.UserGroupInfoEntity;
 import com.study.liao.entity.UserInfoEntity;
 import com.study.liao.entity.constants.BusinessException;
 import com.study.liao.entity.dto.ApprovalDTO;
+import com.study.liao.entity.dto.DownloadFileDto;
 import com.study.liao.entity.dto.SessionWebUserDto;
 import com.study.liao.entity.dto.UserGroupDetailDTO;
 import com.study.liao.entity.enums.UserGroupStatusEnum;
@@ -30,10 +31,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -91,6 +92,25 @@ public class OnlineEditServiceImpl implements OnlineEditService {
 
     @Override
     public void download(HttpServletRequest request, HttpServletResponse response, String fileId) {
+        DownloadFileDto downloadFileDto = this.download(fileId);
+        String filename = downloadFileDto.getFileName();
+        try {
+            if (request.getHeader("User-Agent").toLowerCase().indexOf("msie") > 0) {
+                //IE浏览
+                filename = URLEncoder.encode(filename, "UTF-8");
+            } else {
+                filename = new String(filename.getBytes("UTF-8"), "ISO8859-1");
+            }
+        } catch (UnsupportedEncodingException e) {
+            log.error("文件名转码异常", e);
+            throw new RuntimeException(e);
+        }
+        response.setHeader("Content-Disposition", "attachment;filename=\"" + filename + "\"");
+        FileUtils.readFile(response, downloadFileDto.getDownloadFile(), filename);
+    }
+
+    @Override
+    public DownloadFileDto download(String fileId) {
         //1.先校验文件id并且获取文件在onlyOffice的存储地址
         OnlineFileInfoEntity fileInfoEntity = onlineFileInfoDao.selectById(fileId);
         if (Objects.isNull(fileInfoEntity)) {
@@ -104,18 +124,14 @@ public class OnlineEditServiceImpl implements OnlineEditService {
         byte[] downloadFile = null;
         try {
             downloadFile = HttpUtils.sendGetForBinary(onlyOfficePath + "download", params);
-            if (request.getHeader("User-Agent").toLowerCase().indexOf("msie") > 0) {
-                //IE浏览
-                filename = URLEncoder.encode(filename, "UTF-8");
-            } else {
-                filename = new String(filename.getBytes("UTF-8"), "ISO8859-1");
-            }
         } catch (IOException e) {
             log.error("远程下载失败");
             throw new RuntimeException(e);
         }
-        response.setHeader("Content-Disposition", "attachment;filename=\"" + filename + "\"");
-        FileUtils.readFile(response, downloadFile, filename);
+        DownloadFileDto downloadFileDto = new DownloadFileDto();
+        downloadFileDto.setDownloadFile(downloadFile);
+        downloadFileDto.setFileName(filename);
+        return downloadFileDto;
     }
 
     @Override
